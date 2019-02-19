@@ -13,9 +13,12 @@ julia>
 """
 module Parser
 
-export my_parse
+export Earley
 
-function my_parse()
+struct Earley
+end
+
+function validate()
     return "Hello World"
 end
 
