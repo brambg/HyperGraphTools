@@ -33,7 +33,7 @@ end
 
 
 cs = py"tokenize"("test.tag")
-keys(cs)
+keys(cs) # shows available functions on the commontokenstream PyObject
 token0 = cs[:get](0)
 token1 = cs[:get](1)
 cs[:LT](-2)[:text]

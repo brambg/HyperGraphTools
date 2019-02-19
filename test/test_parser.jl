@@ -37,8 +37,14 @@ using Test
     TAG_ROOT_END -> TAG ROOT_END
     ROOT_START -> [root>
     ROOT_END -> <root]
-    TAG -> [tag|a> OTHER <tag]
-    OTHER -> [other|b> TEXT <other]
+    TAG -> TAG_START OTHER_TAG_END
+    OTHER_TAG_END -> OTHER TAG_END
+    TAG_START -> [tag|a>
+    TAG_END -> <tag]
+    OTHER -> OTHER_START TEXT_OTHER_END
+    TEXT_OTHER_END -> TEXT OTHER_END
+    OTHER_START -> [other|b>
+    OTHER_END -> <other]
     TEXT -> "one two three"
     """
     t1 = tokenize(tagml1)
@@ -75,6 +81,17 @@ using Test
     OPENTAG -> [tag|a> | [other|b>
     CLOSETAG -> <tag] | <other]
     TEXT -> "one" | " two " | "three"
+    """
+    grammar_idlp3 ="""
+    S -> {ROOT}
+    ROOT -> {ROOTOPEN,BODY,ROOTCLOSE}
+    ROOTOPEN < {BODY,ROOTCLOSE}
+    BODY < ROOTCLOSE
+    BODY -> {OPENTAG,CLOSETAG,TEXT,BODY}
+    OPENTAG -> {OPENTAG("tag"),OPENTAG("other")}
+    CLOSETAG -> {CLOSETAG("tag"),CLOSETAG("other")}
+    OPENTAG("tag") < CLOSETAG("tag")
+    OPENTAG("other") < CLOSETAG("other")
     """
     t3 = tokenize(tagml3)
     @test has_no_errors(t3)
