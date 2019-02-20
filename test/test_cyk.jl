@@ -4,6 +4,9 @@ test_cyk:
 - Author: bramb
 - Date: 2019-02-15
 =#
+using Test
+
+import Base.show
 
 struct Rule
     lhs::String
@@ -17,12 +20,12 @@ end
 struct Grammar
   nonTerminals::Array{String,1}
   rules::Array{Rule,1}
-  rule_index::Dict{Int,Array{Int,1}}
+  ruleIndex::Dict{Int,Array{Int,1}}
 end
 # struct Grammar{X}
 #   nonTerminals::Array{X,1}
 #   rules::Array{Rule{X},1}
-#   rule_index::Dict{Int,Array{Int,1}}
+#   lhs_index::Dict{Int,Array{Int,1}}
 #
 # #   function Grammar()
 # #       new{X}([],[],Dict{Int,Array{Int}})
@@ -32,14 +35,17 @@ end
 _is_nonterminal(s::String) = all(c->isuppercase(c), s)
 
 function non_terminals(r::Rule)
-    ntSet = Set()
+    ntSet = []
     push!(ntSet,r.lhs) # by definition, the lhs is a nonterminal
 
     potential_nonterminals = []
     if (typeof(r.rhs) == String)
         push!(potential_nonterminals,r.rhs)
+    elseif (typeof(r.rhs) == Tuple{String,String})
+        push!(potential_nonterminals, r.rhs[1])
+        push!(potential_nonterminals, r.rhs[2])
     end
-    for e in r.rhs
+    for e in potential_nonterminals
         if _is_nonterminal(e)
             push!(ntSet,e)
         end
@@ -49,33 +55,47 @@ end
 
 function add_rule!(g::Grammar, r::Rule)
     for nt in non_terminals(r)
-        if !nt in g.nonTerminals
+        if !(nt in g.nonTerminals)
             push!(g.nonTerminals,nt)
         end
     end
 
     push!(g.rules,r)
 
-    lhs_index = indexin(r.lhs,g.nonTerminals)
-    push!(g.rule_index[lhs_index],size(g.rules))
+    lhs_index = indexin([r.lhs],g.nonTerminals)[1]
+    if (!haskey(g.ruleIndex,lhs_index))
+        g.ruleIndex[lhs_index] = []
+    end
+    push!(g.ruleIndex[lhs_index],size(g.rules)[1])
 end
 
 function rhs_matches_terminal(rhs, terminal)
-    size(rhs) == 1 && rhs[1] == terminal
+    rhs == terminal
 end
 
-function rule_index(rules, terminal)
+function lhs_index(grammar, terminal)
     index = []
-    for (i,rule) in enumerate(rules)
-        if rhs_matches_terminal(rule[2])
-            push!(index,i)
+    for rule in grammar.rules
+        if rhs_matches_terminal(rule.rhs,terminal)
+            push!(index,indexin([rule.lhs],grammar.nonTerminals)[1])
         end
     end
+    return index
 end
 
-function index_triples(rules)
+function index_triples(grammar)
     triples = []
-    push!(triples,(1,2,3))
+    for a in keys(grammar.ruleIndex)
+        for ri in grammar.ruleIndex[a]
+            rhs = grammar.rules[ri].rhs
+            if (typeof(rhs) == Tuple{String,String})
+                b = indexin([rhs[1]],grammar.nonTerminals)[1]
+                c = indexin([rhs[2]],grammar.nonTerminals)[1]
+                push!(triples,(a,b,c))
+            end
+        end
+    end
+    return sort(triples)
 end
 
 function validate(tokens, grammar)
@@ -83,40 +103,58 @@ function validate(tokens, grammar)
     # https://en.wikipedia.org/wiki/Chomsky_normal_form
 
     # let the input be a string I consisting of n characters: a1 ... an.
-    n = size(tokens)
+    n = size(tokens)[1]
+    println("n=$n")
 
     # let the grammar contain r nonterminal symbols R1 ... Rr, with start symbol R1.
-    r = size(grammar)
+    r = size(grammar.nonTerminals)[1]
+    println("r=$r")
 
     # let P[n,n,r] be an array of booleans. Initialize all elements of P to false.
     P = Array{Bool,3}[]
     P = [false for x in 1:n, y in 1:n, z in 1:r]
+#     println(P)
 
     # for each s = 1 to n
     for s in 1:n
     #   for each unit production Rv → as
-        for v in rule_index(grammar,tokens[s])
+        for v in lhs_index(grammar,tokens[s])
     #     set P[1,s,v] = true
             P[1,s,v] = true
+            println("P[1,$s,$v] = true")
          end
     end
+#     println(P)
 
+    triples = index_triples(grammar)
+#     exit()
     # for each l = 2 to n -- Length of span
-    for l in 2:n
+    for length in 2:n
     #   for each s = 1 to n-l+1 -- Start of span
-        for s in 1:n-1+l
+        println("length=$length")
+        for s in 1:(n-length+1)
+            println("  start=$s")
     #     for each p = 1 to l-1 -- Partition of span
-            for p in 1:l-1
+            for p in 1:(length-1)
+            println("    partition=$p")
     #       for each production Ra  → Rb Rc
-                for (a,b,c) in index_triples(grammar)
+                for (a,b,c) in triples
     #         if P[p,s,b] and P[l-p,s+p,c] then set P[l,s,a] = true
-                    if (P[p,s,b] && P[l-p,s+p,c])
-                        P[l,s,a] = true
+#                     println("length=$length,start=$s,partition=$p, (a,b,c)=($a,$b,$c)")
+#                     println("P[p,s,b]=$(P[p,s,b])")
+#                     println("P[length-p,s+p,c]=$(P[length-p,s+p,c])")
+                    println("      (a,b,c)=($a,$b,$c)=$(grammar.nonTerminals[a])->$(grammar.nonTerminals[b]) $(grammar.nonTerminals[c]), P[p,s,b]=P[$p,$s($(tokens[s])),$b($(grammar.nonTerminals[b]))]=$(P[p,s,b]), P[length-p,s+p,c]=P[$(length-p),$(s+p)($(tokens[s+p])),$c($(grammar.nonTerminals[c]))]=$(P[length-p,s+p,c])")
+
+
+                    if (P[p,s,b] && P[length-p,s+p,c])
+                        P[length,s,a] = true
+                        println("        P[$length,$s($(tokens[s])),$a($(grammar.nonTerminals[a]))]=>true")
                     end
                 end
             end
         end
     end
+#     println(P)
     # if P[n,1,1] is true then
     #   I is member of language
     # else
@@ -124,19 +162,78 @@ function validate(tokens, grammar)
     return P[n,1,1]
 end
 
+function show(r::Rule)
+    println("$(r.lhs) -> $(r.rhs)")
+end
+
 function main()
-    r1 = Rule("S", ("A","B")) # S -> AB
-    show(non_terminals(r1))
-    r2 = Rule("A", "a") # A -> a
-    show(non_terminals(r2))
-    r3 = Rule("B", "b") # B -> b
-    show(non_terminals(r3))
+#     r1 = Rule("S", ("A","B")) # S -> AB
+#     show(non_terminals(r1))
+#     println()
+#     r2 = Rule("A", "a") # A -> a
+#     show(non_terminals(r2))
+#     println()
+#     r3 = Rule("B", "b") # B -> b
+#     show(non_terminals(r3))
+#     println()
+#     r4 = Rule("A", ("AA","C")) # A -> AC
+#     r5 = Rule("C", "c") # C -> c
+#     r6 = Rule("AA", "ä") # C -> c
+#     show(non_terminals(r4))
+#     println()
+#     g = Grammar([],[],Dict{Int64,Array{Int64,1}}())
+#     println(g)
+#     add_rule!(g,r1)
+#     add_rule!(g,r2)
+#     add_rule!(g,r3)
+#     add_rule!(g,r4)
+#     add_rule!(g,r5)
+#     add_rule!(g,r6)
+#     println(g)
+#     it = index_triples(g)
+#     println(it)
+
+#     @test validate(["ä", "c", "b"],g)
+#     @test !validate(["x", "y", "z"],g)
+#     @test validate(["a", "b"],g)
+
+    r1 = Rule("S",("NP","VP"))  # 1
+    r2a = Rule("NP",("DET","N"))# 2
+    r2b = Rule("NP","she")      # 3
+    r3a = Rule("VP",("VP","PP"))# 4
+    r3b = Rule("VP",("V","NP")) # 5
+    r3c = Rule("VP","eats")     # 6
+    r4 = Rule("DET","a")        # 7
+    r5a = Rule("N","fish")      # 8
+    r5b = Rule("N","fork")      # 9
+    r6 = Rule("PP",("P","NP"))  # 10
+    r7 = Rule("V","eats")       # 11
+    r8 = Rule("P","with")       # 12
     g = Grammar([],[],Dict{Int64,Array{Int64,1}}())
-    println(g)
     add_rule!(g,r1)
-    add_rule!(g,r2)
-    add_rule!(g,r3)
-    println(g)
+    add_rule!(g,r2a)
+    add_rule!(g,r2b)
+    add_rule!(g,r3a)
+    add_rule!(g,r3b)
+    add_rule!(g,r3c)
+    add_rule!(g,r4)
+    add_rule!(g,r5a)
+    add_rule!(g,r5b)
+    add_rule!(g,r6)
+    add_rule!(g,r7)
+    add_rule!(g,r8)
+    println(g.nonTerminals)
+    println(g.rules)
+    println(g.ruleIndex)
+    println(index_triples(g))
+    println(lhs_index(g,"she"))
+    println(lhs_index(g,"eats"))
+    println(lhs_index(g,"a"))
+    println(lhs_index(g,"fish"))
+    println(lhs_index(g,"with"))
+    println(lhs_index(g,"a"))
+    println(lhs_index(g,"fork"))
+    @test validate(["she", "eats", "a", "fish", "with", "a", "fork"],g)
 end
 
 main()
