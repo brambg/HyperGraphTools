@@ -38,6 +38,8 @@ export
     add_rule!,
     validate
 
+DEBUG = false
+
 struct Rule
     lhs::String
     rhs::Union{String,Tuple{String,String}}
@@ -140,11 +142,11 @@ function validate(tokens, grammar)
 
     # let the input be a string I consisting of n characters: a1 ... an.
     n = size(tokens)[1]
-#     println("n=$n")
+    DEBUG && println("n=$n")
 
     # let the grammar contain r nonterminal symbols R1 ... Rr, with start symbol R1.
     r = size(grammar.nonTerminals)[1]
-#     println("r=$r")
+    DEBUG && println("r=$r")
 
     # let P[n,n,r] be an array of booleans. Initialize all elements of P to false.
     P = Array{Bool,3}[]
@@ -156,32 +158,27 @@ function validate(tokens, grammar)
         for v in lhs_index(grammar,tokens[s])
     #     set P[1,s,v] = true
             P[1,s,v] = true
-            println("P[1,$s,$v] = true: token $s:$(tokens[s]) handled by rule $(grammar.nonTerminals[v]) -> ...")
+            DEBUG && println("P[1,$s,$v] = true: token $s:$(tokens[s]) handled by rule $(grammar.nonTerminals[v]) -> ...")
          end
     end
-#     println(P)
 
     triples = index_triples(grammar)
     # for each l = 2 to n -- Length of span
     for length in 2:n
     #   for each s = 1 to n-l+1 -- Start of span
-#         println("length=$length")
+        DEBUG && println("length=$length")
         for s in 1:(n-length+1)
-#             println("  start=$s: \"$(join(tokens[s:(s+length-1)]))\"")
-    #     for each p = 1 to l-1 -- Partition of span
+            DEBUG && println("  start=$s: \"$(join(tokens[s:(s+length-1)]))\"")
+    #       for each p = 1 to l-1 -- Partition of span
             for p in 1:(length-1)
-#             println("    partition=$p: \"$(join(tokens[s:s+p-1]))\" + \"$(join(tokens[(s+p):s+length-1]))\"")
-    #       for each production Ra  → Rb Rc
+                DEBUG && println("    partition=$p: \"$(join(tokens[s:s+p-1]))\" + \"$(join(tokens[(s+p):s+length-1]))\"")
+    #           for each production Ra  → Rb Rc
                 for (a,b,c) in triples
     #         if P[p,s,b] and P[l-p,s+p,c] then set P[l,s,a] = true
-#                     println("length=$length,start=$s,partition=$p, (a,b,c)=($a,$b,$c)")
-#                     println("P[p,s,b]=$(P[p,s,b])")
-#                     println("P[length-p,s+p,c]=$(P[length-p,s+p,c])")
-
-#                     println("      (a,b,c)=($a,$b,$c)=$(grammar.nonTerminals[a])->$(grammar.nonTerminals[b]) $(grammar.nonTerminals[c]), P[p,s,b]=P[$p,$s($(tokens[s])),$b($(grammar.nonTerminals[b]))]=$(P[p,s,b]), P[length-p,s+p,c]=P[$(length-p),$(s+p)($(tokens[s+p])),$c($(grammar.nonTerminals[c]))]=$(P[length-p,s+p,c])")
+                    DEBUG && println("      (a,b,c)=($a,$b,$c)=$(grammar.nonTerminals[a])->$(grammar.nonTerminals[b]) $(grammar.nonTerminals[c]), P[p,s,b]=P[$p,$s($(tokens[s])),$b($(grammar.nonTerminals[b]))]=$(P[p,s,b]), P[length-p,s+p,c]=P[$(length-p),$(s+p)($(tokens[s+p])),$c($(grammar.nonTerminals[c]))]=$(P[length-p,s+p,c])")
                     if (P[p,s,b] && P[length-p,s+p,c])
                         P[length,s,a] = true
-#                         println("      P[$length,$s($(tokens[s])),$a($(grammar.nonTerminals[a]))]=>true")
+                        DEBUG && println("      P[$length,$s($(tokens[s])),$a($(grammar.nonTerminals[a]))]=>true")
                     end
                 end
             end
