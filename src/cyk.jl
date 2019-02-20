@@ -155,7 +155,7 @@ function validate(tokens, grammar)
         for v in lhs_index(grammar,tokens[s])
     #     set P[1,s,v] = true
             P[1,s,v] = true
-#             println("P[1,$s,$v] = true")
+#             println("P[1,$s,$v] = true: token $s:$(tokens[s]) handled by rule $(grammar.nonTerminals[v]) -> ...")
          end
     end
 #     println(P)
@@ -179,7 +179,6 @@ function validate(tokens, grammar)
 #                     println("P[length-p,s+p,c]=$(P[length-p,s+p,c])")
 #                     println("      (a,b,c)=($a,$b,$c)=$(grammar.nonTerminals[a])->$(grammar.nonTerminals[b]) $(grammar.nonTerminals[c]), P[p,s,b]=P[$p,$s($(tokens[s])),$b($(grammar.nonTerminals[b]))]=$(P[p,s,b]), P[length-p,s+p,c]=P[$(length-p),$(s+p)($(tokens[s+p])),$c($(grammar.nonTerminals[c]))]=$(P[length-p,s+p,c])")
 
-
                     if (P[p,s,b] && P[length-p,s+p,c])
                         P[length,s,a] = true
 #                         println("        P[$length,$s($(tokens[s])),$a($(grammar.nonTerminals[a]))]=>true")
@@ -188,7 +187,6 @@ function validate(tokens, grammar)
             end
         end
     end
-#     println(P)
     # if P[n,1,1] is true then
     #   I is member of language
     # else

@@ -9,30 +9,29 @@ using Test
 @testset "CYK" begin
     using HyperGraphTools.CYK
 
+    g = Grammar()
     r1 = Rule("S", ("A","B")) # S -> A B
     @test CYK.non_terminals(r1) == ["S", "A", "B"]
+    add_rule!(g,r1)
 
     r2 = Rule("A", "a") # A -> a
     @test CYK.non_terminals(r2) == ["A"]
+    add_rule!(g,r2)
 
     r3 = Rule("B", "b") # B -> b
     @test CYK.non_terminals(r3) == ["B"]
+    add_rule!(g,r3)
 
     r4 = Rule("A", ("AA","C")) # A -> AA C
     @test CYK.non_terminals(r4) == ["A", "AA", "C"]
+    add_rule!(g,r4)
 
     r5 = Rule("C", "c") # C -> c
     @test CYK.non_terminals(r5) == ["C"]
+    add_rule!(g,r5)
 
     r6 = Rule("AA", "ä") # C -> c
     @test CYK.non_terminals(r6) == ["AA"]
-
-    g = Grammar()
-    add_rule!(g,r1)
-    add_rule!(g,r2)
-    add_rule!(g,r3)
-    add_rule!(g,r4)
-    add_rule!(g,r5)
     add_rule!(g,r6)
 
     it = CYK.index_triples(g)

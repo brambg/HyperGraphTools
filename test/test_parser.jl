@@ -7,19 +7,11 @@ test_parser:
 using Test
 
 @testset "parser" begin
-    using HyperGraphTools.Parser
     using HyperGraphTools.SimpleTAGMLTokenizer
-
-    r = my_parse()
-    @test r == "Hello World"
+    using HyperGraphTools.CYK
 
     function has_no_errors(x)
         isempty(filter(x -> x.type == SimpleTAGMLTokenizer.ERROR, x))
-    end
-
-    function validate(tokens,grammar)
-        earley = Earley(grammar)
-        validate(earley,tokens)
     end
 
     # use case 1: 2 layers, full overlap
@@ -47,15 +39,25 @@ using Test
     OTHER_END -> <other]
     TEXT -> "one two three"
     """
-    t1 = tokenize(tagml1)
-    @test has_no_errors(t1)
-    grammar = Dict([
-      ("S", ["ROOT"]),
-      ("ROOT", ["[root>", "TAG", "<root]"]),
-      ("TAG", ["[tag|a>", "OTHER", "<tag]"]),
-      ("OTHER", ["[other|b>", "TEXT", "<other]"]),
-      ("TEXT", ["one two three"])
-    ])
+    tokens = tokenize(tagml1)
+    @test has_no_errors(tokens)
+    t1 = [t.content for t in tokens]
+    println("t1=$t1")
+    grammar = Grammar()
+    add_rule!(grammar, Rule("S",("ROOT_START","TAG_ROOT_END")))
+    add_rule!(grammar, Rule("TAG_ROOT_END",("TAG","ROOT_END")))
+    add_rule!(grammar, Rule("TAG", ("TAG_START", "OTHER_TAG_END")))
+    add_rule!(grammar, Rule("OTHER_TAG_END", ("OTHER", "TAG_END")))
+    add_rule!(grammar, Rule("OTHER", ("OTHER_START", "TEXT_OTHER_END")))
+    add_rule!(grammar, Rule("TEXT_OTHER_END", ("TEXT", "OTHER_END")))
+    add_rule!(grammar, Rule("ROOT_START", "[root>"))
+    add_rule!(grammar, Rule("TAG_START", "[tag|a>"))
+    add_rule!(grammar, Rule("OTHER_START", "[other|b>"))
+    add_rule!(grammar, Rule("TEXT", "one two three"))
+    add_rule!(grammar, Rule("OTHER_END", "<other]"))
+    add_rule!(grammar, Rule("TAG_END", "<tag]"))
+    add_rule!(grammar, Rule("ROOT_END", "<root]"))
+    println("grammar=$grammar")
     @test validate(t1,grammar)
 
     # use case 2: 2 layers, partial overlap
@@ -82,7 +84,7 @@ using Test
     CLOSETAG -> <tag] | <other]
     TEXT -> "one" | " two " | "three"
     """
-    grammar_idlp3 ="""
+    grammar_idlp3 = """
     S -> {ROOT}
     ROOT -> {ROOTOPEN,BODY,ROOTCLOSE}
     ROOTOPEN < {BODY,ROOTCLOSE}
