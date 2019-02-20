@@ -1,7 +1,7 @@
 """
 # module cyk
 
-- Julia version: 
+- Julia version:
 - Author: bramb
 - Date: 2019-02-20
 
@@ -136,6 +136,8 @@ function validate(tokens, grammar)
     # grammar rules need to be in chomsky normal form:
     # https://en.wikipedia.org/wiki/Chomsky_normal_form
 
+    # algorithm based on the pseudocode from https://en.wikipedia.org/wiki/CYK_algorithm
+
     # let the input be a string I consisting of n characters: a1 ... an.
     n = size(tokens)[1]
 #     println("n=$n")
@@ -147,7 +149,6 @@ function validate(tokens, grammar)
     # let P[n,n,r] be an array of booleans. Initialize all elements of P to false.
     P = Array{Bool,3}[]
     P = [false for x in 1:n, y in 1:n, z in 1:r]
-#     println(P)
 
     # for each s = 1 to n
     for s in 1:n
@@ -155,33 +156,32 @@ function validate(tokens, grammar)
         for v in lhs_index(grammar,tokens[s])
     #     set P[1,s,v] = true
             P[1,s,v] = true
-#             println("P[1,$s,$v] = true: token $s:$(tokens[s]) handled by rule $(grammar.nonTerminals[v]) -> ...")
+            println("P[1,$s,$v] = true: token $s:$(tokens[s]) handled by rule $(grammar.nonTerminals[v]) -> ...")
          end
     end
 #     println(P)
 
     triples = index_triples(grammar)
-#     exit()
     # for each l = 2 to n -- Length of span
     for length in 2:n
     #   for each s = 1 to n-l+1 -- Start of span
 #         println("length=$length")
         for s in 1:(n-length+1)
-#             println("  start=$s")
+#             println("  start=$s: \"$(join(tokens[s:(s+length-1)]))\"")
     #     for each p = 1 to l-1 -- Partition of span
             for p in 1:(length-1)
-#             println("    partition=$p")
+#             println("    partition=$p: \"$(join(tokens[s:s+p-1]))\" + \"$(join(tokens[(s+p):s+length-1]))\"")
     #       for each production Ra  → Rb Rc
                 for (a,b,c) in triples
     #         if P[p,s,b] and P[l-p,s+p,c] then set P[l,s,a] = true
 #                     println("length=$length,start=$s,partition=$p, (a,b,c)=($a,$b,$c)")
 #                     println("P[p,s,b]=$(P[p,s,b])")
 #                     println("P[length-p,s+p,c]=$(P[length-p,s+p,c])")
-#                     println("      (a,b,c)=($a,$b,$c)=$(grammar.nonTerminals[a])->$(grammar.nonTerminals[b]) $(grammar.nonTerminals[c]), P[p,s,b]=P[$p,$s($(tokens[s])),$b($(grammar.nonTerminals[b]))]=$(P[p,s,b]), P[length-p,s+p,c]=P[$(length-p),$(s+p)($(tokens[s+p])),$c($(grammar.nonTerminals[c]))]=$(P[length-p,s+p,c])")
 
+#                     println("      (a,b,c)=($a,$b,$c)=$(grammar.nonTerminals[a])->$(grammar.nonTerminals[b]) $(grammar.nonTerminals[c]), P[p,s,b]=P[$p,$s($(tokens[s])),$b($(grammar.nonTerminals[b]))]=$(P[p,s,b]), P[length-p,s+p,c]=P[$(length-p),$(s+p)($(tokens[s+p])),$c($(grammar.nonTerminals[c]))]=$(P[length-p,s+p,c])")
                     if (P[p,s,b] && P[length-p,s+p,c])
                         P[length,s,a] = true
-#                         println("        P[$length,$s($(tokens[s])),$a($(grammar.nonTerminals[a]))]=>true")
+#                         println("      P[$length,$s($(tokens[s])),$a($(grammar.nonTerminals[a]))]=>true")
                     end
                 end
             end
