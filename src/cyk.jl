@@ -8,7 +8,26 @@
 # Examples
 
 ```jldoctest
-julia>
+julia>using HyperGraphTools.CYK
+julia>g = Grammar()
+julia>add_rule!(g, Rule("S",("NP","VP"))) # S -> NP VP
+julia>add_rule!(g, Rule("VP",("VP","PP")))
+julia>add_rule!(g, Rule("VP",("V","NP")))
+julia>add_rule!(g, Rule("VP","eats"))
+julia>add_rule!(g, Rule("PP",("P","NP")))
+julia>add_rule!(g, Rule("NP",("DET","N")))
+julia>add_rule!(g, Rule("NP","she"))
+julia>add_rule!(g, Rule("V","eats"))
+julia>add_rule!(g, Rule("P","with"))
+julia>add_rule!(g, Rule("N","fish"))
+julia>add_rule!(g, Rule("N","fork"))
+julia>add_rule!(g, Rule("DET","a"))
+
+julia>validate(["she", "eats", "a", "fish", "with", "a", "fork"],g)
+true
+
+julia>validate(["with", "a", "fork", "eats", "she", "a", "fish"],g)
+false
 ```
 """
 module CYK
@@ -32,6 +51,10 @@ struct Grammar
   nonTerminals::Array{String,1}
   rules::Array{Rule,1}
   ruleIndex::Dict{Int,Array{Int,1}}
+
+  function Grammar()
+      new([],[],Dict{Int64,Array{Int64,1}}())
+  end
 end
 # struct Grammar{X}
 #   nonTerminals::Array{X,1}
@@ -77,7 +100,7 @@ function add_rule!(g::Grammar, r::Rule)
     if (!haskey(g.ruleIndex,lhs_index))
         g.ruleIndex[lhs_index] = []
     end
-    push!(g.ruleIndex[lhs_index],size(g.rules)[1])
+    push!(g.ruleIndex[lhs_index],size(g.rules)[1]);
 end
 
 function rhs_matches_terminal(rhs, terminal)

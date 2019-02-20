@@ -27,7 +27,7 @@ using Test
     r6 = Rule("AA", "ä") # C -> c
     @test CYK.non_terminals(r6) == ["AA"]
 
-    g = Grammar([],[],Dict{Int64,Array{Int64,1}}())
+    g = Grammar()
     add_rule!(g,r1)
     add_rule!(g,r2)
     add_rule!(g,r3)
@@ -42,6 +42,7 @@ using Test
     @test !validate(["x", "y", "z"],g)
     @test validate(["a", "b"],g)
 
+    g = Grammar()
     r1 = Rule("S",("NP","VP"))  # 1
     r2a = Rule("NP",("DET","N"))# 2
     r2b = Rule("NP","she")      # 3
@@ -54,7 +55,6 @@ using Test
     r6 = Rule("PP",("P","NP"))  # 10
     r7 = Rule("V","eats")       # 11
     r8 = Rule("P","with")       # 12
-    g = Grammar([],[],Dict{Int64,Array{Int64,1}}())
     add_rule!(g,r1)
     add_rule!(g,r2a)
     add_rule!(g,r2b)
@@ -69,14 +69,14 @@ using Test
     add_rule!(g,r8)
     @test g.nonTerminals == ["S", "NP", "VP", "DET", "N", "PP", "V", "P"]
     @test g.ruleIndex == Dict(
-        1=>[1],
-        2=>[2, 3],
-        3=>[4, 5, 6],
-        4=>[7],
-        5=>[8, 9],
-        6=>[10],
-        7=>[11],
-        8=>[12]
+        1 => [1], # S is lhs in rule 1 (r1)
+        2 => [2, 3], # NP is lhs in rules 2,3 (r2a,r2b)
+        3 => [4, 5, 6], # VP is lhs in rules 4,5,6 (r3a,r3b,r3c)
+        4 => [7], # DET is lhs in rule 7 (r4)
+        5 => [8, 9], # N is lhs in rules 8,9 (r5a,r5b)
+        6 => [10], # PP is lhs in rule 10 (r6)
+        7 => [11], # V is lhs in rule 11 (r7)
+        8 => [12] # P is lhs in rule 12 (r8)
     )
     @test CYK.index_triples(g) == [(1, 2, 3), (2, 4, 5), (3, 3, 6), (3, 7, 2), (6, 8, 2)]
 #     println(CYK.lhs_index(g,"she"))

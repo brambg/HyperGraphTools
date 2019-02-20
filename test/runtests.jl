@@ -12,4 +12,5 @@ using Test
     include("test_hypergraph_visualization.jl")
     include("test_rules_visualization.jl")
     include("test_hypergraph_external_nodes_count.jl")
+    include("test_cyk.jl")
 end
