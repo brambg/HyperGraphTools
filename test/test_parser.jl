@@ -10,6 +10,8 @@ function has_no_errors(x)
     isempty(filter(x -> x.type == SimpleTAGMLTokenizer.ERROR, x))
 end
 
+@testset "tagml use cases" begin
+
 @testset "use case 1: 2 layers, full overlap" begin
     using HyperGraphTools.SimpleTAGMLTokenizer
     using HyperGraphTools.CYK
@@ -42,7 +44,7 @@ end
     tokens = tokenize(tagml1)
     @test has_no_errors(tokens)
     string_tokens = [t.content for t in tokens]
-    println("string_tokens=$string_tokens")
+#     println("string_tokens=$string_tokens")
     grammar = Grammar()
     add_rule!(grammar, Rule("S",("ROOT_START","TAG_ROOT_END")))
     add_rule!(grammar, Rule("TAG_ROOT_END",("TAG","ROOT_END")))
@@ -57,7 +59,7 @@ end
     add_rule!(grammar, Rule("OTHER_END", "<other]"))
     add_rule!(grammar, Rule("TAG_END", "<tag]"))
     add_rule!(grammar, Rule("ROOT_END", "<root]"))
-    println("grammar=$grammar")
+#     println("grammar=$grammar")
     @test validate(string_tokens,grammar)
 end
 
@@ -92,7 +94,7 @@ end
     add_rule!(grammar, Rule("MIXED", "<other]"))
     add_rule!(grammar, Rule("MIXED", "<tag]"))
     add_rule!(grammar, Rule("ROOTEND", "<root]"))
-    println("grammar=$grammar")
+#     println("grammar=$grammar")
     @test validate(string_tokens,grammar)
 end
 
@@ -101,27 +103,44 @@ end
     using HyperGraphTools.CYK
     # use case 3: 2 layers, no overlap
     tagml3 = "[root>[tag|a>one<tag] two [other|b>three<other]<root]"
-    grammar3 = """
-    S -> ROOT
-    ROOT -> [root> ROOTBODY <root]
-    ROOTBODY -> (OPENTAG | CLOSETAG | TEXT)+
-    OPENTAG -> [tag|a> | [other|b>
-    CLOSETAG -> <tag] | <other]
-    TEXT -> "one" | " two " | "three"
-    """
-    grammar_idlp3 = """
-    S -> {ROOT}
-    ROOT -> {ROOTOPEN,BODY,ROOTCLOSE}
-    ROOTOPEN < {BODY,ROOTCLOSE}
-    BODY < ROOTCLOSE
-    BODY -> {OPENTAG,CLOSETAG,TEXT,BODY}
-    OPENTAG -> {OPENTAG("tag"),OPENTAG("other")}
-    CLOSETAG -> {CLOSETAG("tag"),CLOSETAG("other")}
-    OPENTAG("tag") < CLOSETAG("tag")
-    OPENTAG("other") < CLOSETAG("other")
-    """
-    t3 = tokenize(tagml3)
-    @test has_no_errors(t3)
+#     grammar3 = """
+#     S -> ROOT
+#     ROOT -> [root> ROOTBODY <root]
+#     ROOTBODY -> (OPENTAG | CLOSETAG | TEXT)+
+#     OPENTAG -> [tag|a> | [other|b>
+#     CLOSETAG -> <tag] | <other]
+#     TEXT -> "one" | " two " | "three"
+#     """
+#     grammar_idlp3 = """
+#     S -> {ROOT}
+#     ROOT -> {ROOTOPEN,BODY,ROOTCLOSE}
+#     ROOTOPEN < {BODY,ROOTCLOSE}
+#     BODY < ROOTCLOSE
+#     BODY -> {OPENTAG,CLOSETAG,TEXT,BODY}
+#     OPENTAG -> {OPENTAG("tag"),OPENTAG("other")}
+#     CLOSETAG -> {CLOSETAG("tag"),CLOSETAG("other")}
+#     OPENTAG("tag") < CLOSETAG("tag")
+#     OPENTAG("other") < CLOSETAG("other")
+#     """
+    tokens = tokenize(tagml3)
+    @test has_no_errors(tokens)
+
+    string_tokens = [t.content for t in tokens]
+    grammar = Grammar()
+    add_rule!(grammar, Rule("S",("ROOTSTART","MIXED_ROOTEND")))
+    add_rule!(grammar, Rule("MIXED_ROOTEND",("MIXED","ROOTEND")))
+    add_rule!(grammar, Rule("MIXED", ("MIXED", "MIXED")))
+    add_rule!(grammar, Rule("ROOTSTART", "[root>"))
+    add_rule!(grammar, Rule("MIXED", "[tag|a>"))
+    add_rule!(grammar, Rule("MIXED", "[other|b>"))
+    add_rule!(grammar, Rule("MIXED", "one"))
+    add_rule!(grammar, Rule("MIXED", " two "))
+    add_rule!(grammar, Rule("MIXED", "three"))
+    add_rule!(grammar, Rule("MIXED", "<other]"))
+    add_rule!(grammar, Rule("MIXED", "<tag]"))
+    add_rule!(grammar, Rule("ROOTEND", "<root]"))
+#     println("grammar=$grammar")
+    @test validate(string_tokens,grammar)
 end
 
 @testset "use case 4: 2 layers, shared tags (a)" begin
@@ -130,8 +149,23 @@ end
 
     # use case 4: 2 layers, shared tags
     tagml4a = "[root|+a,+b>[tag|a,b>[other|a,b>one two three<other]<tag]<root]"
-    t4a = tokenize(tagml4a)
-    @test has_no_errors(t4a)
+    tokens = tokenize(tagml4a)
+    @test has_no_errors(tokens)
+
+    string_tokens = [t.content for t in tokens]
+    grammar = Grammar()
+    add_rule!(grammar, Rule("S",("ROOTSTART","MIXED_ROOTEND")))
+    add_rule!(grammar, Rule("MIXED_ROOTEND",("MIXED","ROOTEND")))
+    add_rule!(grammar, Rule("MIXED", ("MIXED", "MIXED")))
+    add_rule!(grammar, Rule("ROOTSTART", "[root|+a,+b>"))
+    add_rule!(grammar, Rule("MIXED", "[tag|a,b>"))
+    add_rule!(grammar, Rule("MIXED", "[other|a,b>"))
+    add_rule!(grammar, Rule("MIXED", "one two three"))
+    add_rule!(grammar, Rule("MIXED", "<other]"))
+    add_rule!(grammar, Rule("MIXED", "<tag]"))
+    add_rule!(grammar, Rule("ROOTEND", "<root]"))
+#     println("grammar=$grammar")
+    @test validate(string_tokens,grammar)
 end
 
 @testset "use case 4: 2 layers, shared tags (b)" begin
@@ -140,6 +174,30 @@ end
 
     # use case 4: 2 layers, shared tags
     tagml4b = "[root|+a,+b>[tag|a,b>[other|a,b>[w|a>one<w] [b|b>two<b] three<other]<tag]<root]"
-    t4b = tokenize(tagml4b)
-    @test has_no_errors(t4b)
+    tokens = tokenize(tagml4b)
+    @test has_no_errors(tokens)
+
+    string_tokens = [t.content for t in tokens]
+    grammar = Grammar()
+    add_rule!(grammar, Rule("S",("ROOTSTART","MIXED_ROOTEND")))
+    add_rule!(grammar, Rule("MIXED_ROOTEND",("MIXED","ROOTEND")))
+    add_rule!(grammar, Rule("MIXED", ("MIXED", "MIXED")))
+    add_rule!(grammar, Rule("ROOTSTART", "[root|+a,+b>"))
+    add_rule!(grammar, Rule("MIXED", "[tag|a,b>"))
+    add_rule!(grammar, Rule("MIXED", "[other|a,b>"))
+    add_rule!(grammar, Rule("MIXED", "[w|a>"))
+    add_rule!(grammar, Rule("MIXED", "one"))
+    add_rule!(grammar, Rule("MIXED", "<w]"))
+    add_rule!(grammar, Rule("MIXED", " "))
+    add_rule!(grammar, Rule("MIXED", "[b|b>"))
+    add_rule!(grammar, Rule("MIXED", "two"))
+    add_rule!(grammar, Rule("MIXED", "<b]"))
+    add_rule!(grammar, Rule("MIXED", " three"))
+    add_rule!(grammar, Rule("MIXED", "<other]"))
+    add_rule!(grammar, Rule("MIXED", "<tag]"))
+    add_rule!(grammar, Rule("ROOTEND", "<root]"))
+#     println("grammar=$grammar")
+    @test validate(string_tokens,grammar)
+end
+
 end

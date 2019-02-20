@@ -42,7 +42,7 @@ DEBUG = false
 
 struct Rule
     lhs::String
-    rhs::Union{String,Tuple{String,String}}
+    rhs::Union{String,Tuple{String,String}} # either a single terminal or a tuple of 2 nonterminals
 end
 # struct Rule{X}
 #     lhs::X
@@ -116,6 +116,9 @@ function lhs_index(grammar, terminal)
             push!(index,indexin([rule.lhs],grammar.nonTerminals)[1])
         end
     end
+    if (size(index)[1] == 0)
+        println(stderr, "ERROR: No rule found for terminal $terminal")
+    end
     return index
 end
 
@@ -137,6 +140,7 @@ end
 function validate(tokens, grammar)
     # grammar rules need to be in chomsky normal form:
     # https://en.wikipedia.org/wiki/Chomsky_normal_form
+    # TODO: check the grammar rules are in CNF
 
     # algorithm based on the pseudocode from https://en.wikipedia.org/wiki/CYK_algorithm
 
