@@ -102,7 +102,7 @@ function add_rule!(g::Grammar, r::Rule)
     if (!haskey(g.ruleIndex,lhs_index))
         g.ruleIndex[lhs_index] = []
     end
-    push!(g.ruleIndex[lhs_index],size(g.rules)[1]);
+    push!(g.ruleIndex[lhs_index],length(g.rules));
 end
 
 function rhs_matches_terminal(rhs, terminal)
@@ -116,7 +116,7 @@ function lhs_index(grammar, terminal)
             push!(index,indexin([rule.lhs],grammar.nonTerminals)[1])
         end
     end
-    if (size(index)[1] == 0)
+    if (length(index) == 0)
         println(stderr, "ERROR: No rule found for terminal $terminal")
     end
     return index
@@ -145,11 +145,11 @@ function validate(tokens, grammar)
     # algorithm based on the pseudocode from https://en.wikipedia.org/wiki/CYK_algorithm
 
     # let the input be a string I consisting of n characters: a1 ... an.
-    n = size(tokens)[1]
+    n = length(tokens)
     DEBUG && println("n=$n")
 
     # let the grammar contain r nonterminal symbols R1 ... Rr, with start symbol R1.
-    r = size(grammar.nonTerminals)[1]
+    r = length(grammar.nonTerminals)
     DEBUG && println("r=$r")
 
     # let P[n,n,r] be an array of booleans. Initialize all elements of P to false.

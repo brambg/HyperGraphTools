@@ -8,7 +8,7 @@
 # Examples
 
 ```jldoctest
-julia>
+julia>using HyperGraphTools.Parser
 ```
 """
 module Parser
