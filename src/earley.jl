@@ -29,6 +29,14 @@ mutable struct Production
     Production(terms::Array{}) = new(terms)
 end
 
+function Base.length(production::Production)
+    return length(production.terms)
+end
+
+function Base.getindex(production::Production, i::Int64)
+    return production.terms[i]
+end
+
 mutable struct Rule
     name::String
     productions::Array{Production,1}
@@ -62,6 +70,14 @@ mutable struct Column
     Column(index::Int64, token::String) = new(index,token,[])
 end
 
+function Base.iterate(column::Column)
+    return iterate(column.states)
+end
+
+function Base.iterate(column::Column, i::Int64)
+    return iterate(column.states,i)
+end
+
 mutable struct State
     name::String
     production::Production
@@ -71,7 +87,7 @@ mutable struct State
     complete::Bool
     next_term
 
-    State(name::String,production::Production,dot_index::Int64,start_column::Column) =
+    State(name::String, production::Production, dot_index::Int64, start_column::Column) =
       new(name,production,dot_index,start_column)
 end
 
@@ -79,6 +95,13 @@ function Base.push!(column::Column, state::State)
     push!(column.states, state)
 end
 
+function iscompleted(state::State)
+    return state.dot_index >= length(state.production)
+end
+
+function next_term(state::State)
+    return (iscompleted(state)) ? nothing : state.production[state.dot_index]
+end
 
 mutable struct Node
     value
@@ -91,14 +114,14 @@ function earley_parse(tokens, grammar)
     @show(table)
     start_rule = grammar.rules_index["S"]
     @show(start_rule)
-    push!(table[1],State(GAMMA_RULE, Production("S"), 0, table[1]))
+    push!(table[1],State(GAMMA_RULE, Production("S"), 1, table[1]))
 
     for (i, col) in enumerate(table)
         for state in col.states
-            if state.complete
+            if iscompleted(state)
                 complete(col,state)
             else
-                term = state.next_term
+                term = next_term(state)
                 if (isa(term,Rule))
                     predict(col,term)
                 elseif (i + 1 < length(table))
@@ -127,10 +150,20 @@ end
 #         ADD-TO-SET((A → αa•β, j), S[k+1])
 #     end
 
-# procedure COMPLETER((B → γ•, x), k)
-#     for each (A → α•Bβ, j) in S[x] do
-#         ADD-TO-SET((A → αB•β, j), S[k])
-#     end
+function complete(column::Column, state::State)
+    if !iscompleted(state)
+        return nothing
+    end
+    for st in state.start_column
+        term = next_term(st)
+        if (!isa(term,Rule))
+            continue
+        end
+        if (term.name == state.name)
+            push!(column,State(st.name, st.production, st.dot_index + 1, st.start_column))
+        end
+    end
+end
 
 # http://matt.might.net/articles/parsing-with-derivatives/
 end

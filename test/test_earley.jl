@@ -37,5 +37,6 @@ using Test
     push!(g,VP)
 
     tokens = ["book", "the", "flight", "through", "houston"]
-    earley_parse(tokens,g)
+    state = earley_parse(tokens,g)
+    @show(state)
 end
