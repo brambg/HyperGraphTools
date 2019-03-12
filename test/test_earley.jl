@@ -17,17 +17,16 @@ using Test
     P = Rule("P", [Production("with"), Production("in"), Production("on"), Production("at"), Production("through")])
 
     PP = Rule("PP")
-    NP = Rule("NP", [Production(["D", "N"]), Production("john"), Production("houston")])
-    push!(NP,Production(["NP", "PP"]))
-    push!(PP,Production(["P", "NP"]))
+    NP = Rule("NP", [Production([D, N]), Production("john"), Production("houston")])
+    push!(NP,Production([NP, PP]))
+    push!(PP,Production([P, NP]))
 
-    VP = Rule("VP", Production(["V", "NP"]))
-    push!(VP,Production(["VP", "PP"]))
-    S = Rule("S", [Production(["NP", "VP"]), Production(["VP"])])
-    @show(S)
+    VP = Rule("VP", Production([V, NP]))
+    push!(VP,Production([VP, PP]))
+    S = Rule("S", [Production([NP, VP]), Production([VP])])
+#     @show(S)
 
     push!(g,S)
-    @show(g)
     push!(g,N)
     push!(g,D)
     push!(g,V)
@@ -35,6 +34,7 @@ using Test
     push!(g,PP)
     push!(g,NP)
     push!(g,VP)
+#     @show(g)
 
     tokens = ["book", "the", "flight", "through", "houston"]
     state = earley_parse(tokens,g)
