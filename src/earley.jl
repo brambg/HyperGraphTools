@@ -5,6 +5,8 @@
 - Author: bramb
 - Date: 2019-02-13
 
+based on https://github.com/tomerfiliba/tau/blob/master/earley3.py
+
 # Examples
 
 ```jldoctest
@@ -13,44 +15,43 @@ julia>using HyperGraphTools.Earley
 """
 module Earley
 
-import Base.push!
+DEBUG = false
+
+import Base.push!, Base.isequal, Base.hash, Base.iterate, Base.length, Base.getindex
 
 export earley_parse,
+    str,
     Grammar,
     Rule,
     Production
 
 
 mutable struct Production
-    terms::Array{}
+    terms::Vector{}
 
     Production(term::String) = new([term])
 
-    Production(terms::Array{}) = new(terms)
+    Production(terms::Vector{}) = new(terms)
 end
 
-function Base.length(production::Production)
-    return length(production.terms)
-end
+length(production::Production) = length(production.terms)
 
-function Base.getindex(production::Production, i::Int64)
-    return production.terms[i]
-end
+getindex(production::Production, i::Int64) = production.terms[i]
+
+isequal(p1::Production, p2::Production) = p1.terms == p2.terms
 
 mutable struct Rule
     name::String
-    productions::Array{Production,1}
+    productions::Vector{Production}
 
     Rule(name::String) = new(name,[])
 
     Rule(name::String, production::Production) = new(name,[production])
 
-    Rule(name::String, productions::Array{Production,1}) = new(name,productions)
+    Rule(name::String, productions::Vector{Production}) = new(name,productions)
 end
 
-function Base.push!(rule::Rule, production::Production)
-    push!(rule.productions, production)
-end
+push!(rule::Rule, production::Production) = push!(rule.productions, production)
 
 mutable struct Grammar
     rules_index::Dict{String,Rule}
@@ -58,28 +59,22 @@ mutable struct Grammar
     Grammar() = new(Dict{String,Rule}())
 end
 
-function Base.push!(grammar::Grammar, rule::Rule)
-    grammar.rules_index[rule.name] = rule
-end
+push!(grammar::Grammar, rule::Rule) = grammar.rules_index[rule.name] = rule
 
 abstract type AState end
 
 mutable struct Column
     index::Int64
     token::String
-    states::Array{AState}
+    states::Vector{AState}
     _unique::Set{AState}
 
     Column(index::Int64, token::String) = new(index,token,[],Set())
 end
 
-function Base.iterate(column::Column)
-    return iterate(column.states)
-end
+iterate(column::Column) = iterate(column.states)
 
-function Base.iterate(column::Column, i::Int64)
-    return iterate(column.states,i)
-end
+iterate(column::Column, i::Int64) = iterate(column.states,i)
 
 function Base.push!(column::Column, state::AState)
     if !(state in column._unique)
@@ -97,68 +92,62 @@ mutable struct State <: AState
     production::Production
     dot_index::Int64
     start_column::Column
-    end_column::Column
+    end_column::Union{Column,Nothing}
 
     State(name::String, production::Production, dot_index::Int64, start_column::Column) =
-      new(name,production,dot_index,start_column)
+      new(name,production,dot_index,start_column,nothing)
 end
 
-
-function iscompleted(state::State)
-    return state.dot_index > length(state.production)
+function Base.isequal(state1::State, state2::State)
+    return (state1.name, state1.production, state1.dot_index, state1.start_column) == (state2.name, state2.production, state2.dot_index, state2.start_column)
 end
 
-function next_term(state::State)
-    return (iscompleted(state)) ? nothing : state.production[state.dot_index]
-end
+hash(state::State) = hash(state.name) + hash(state.production) + hash(state.dot_index) + hash(state.start_column)
 
-# mutable struct Node
-#     value
-#     children
-# end
+iscompleted(state::State) = state.dot_index - 1 >= length(state.production)
 
-GAMMA_RULE = "GAMMA"
+next_term(state::State) = (iscompleted(state)) ? nothing : state.production[state.dot_index]
+
+GAMMA_RULE = "γ"
 function earley_parse(tokens, grammar)
-    table = [Column(i,token) for (i,token) in enumerate(tokens)]
-#     @show(table)
+    table = [Column(i,token) for (i,token) in enumerate(vcat(["∅"],tokens))]
     start_rule = grammar.rules_index["S"]
-#     @show(start_rule)
     push!(table[1],State(GAMMA_RULE, Production([start_rule]), 1, table[1]))
-#     @show(table)
 
     for (i, col) in enumerate(table)
-#         @show(i,col)
+        DEBUG && println("## $(i - 1) $(col.token)")
         for state in col.states
-#             @show(state)
+            DEBUG && println(str(state))
             if iscompleted(state)
-                println("state $state is completed!")
+                DEBUG && println("> state $(str(state)) is completed!")
                 complete(col,state)
             else
                 term = next_term(state)
-                @show(term)
+                DEBUG && println("term = $(str(term))")
                 if (isa(term,Rule))
                     predict(col,term)
-                elseif (i + 1 < length(table))
-                    scan(table[i + 1],state,term)
+                    DEBUG && println("after predict: col.states =\n\t", join([str(s) for s in col.states],"\n\t"))
+                elseif (i < length(table))
+                    scan(table[i + 1], state, term)
+                    DEBUG && println("after scan: table[i + 1].states =\n\t", join([str(s) for s in table[i + 1].states],"\n\t"))
                 end
             end
+            DEBUG && println()
         end
     end
     # find gamma rule in last table column (otherwise fail)
+#     gamma_states = filter(s->s.name == GAMMA_RULE, collect(table[end]))
     for state in table[end]
+        DEBUG && println(str(state))
         if state.name == GAMMA_RULE && iscompleted(state)
-            return st
-        else
-            throw("parsing failed")
+            return state
         end
     end
+#     !isempty(gamma_states) && iscompleted(gamma_states[1]) && return gammma_state[1]
+    throw("parsing failed")
 end
 
-function predict(col::Column, rule::Rule)
-    for prod in rule.productions
-        push!(col, State(rule.name, prod, 1, col))
-    end
-end
+predict(col::Column, rule::Rule) = map(prod -> push!(col, State(rule.name, prod, 1, col)), rule.productions)
 
 function scan(column::Column, state::State, token::String)
     if (token != column.token)
@@ -181,6 +170,34 @@ function complete(column::Column, state::State)
         end
     end
 end
+
+function str(grammar::Grammar)
+    buf = IOBuffer()
+    for r in values(grammar.rules_index)
+        write(buf,str(r) * "\n")
+    end
+    return String(take!(buf))
+end
+
+function str(rule::Rule)
+    lhs = rule.name
+    rhs = join(map(str, rule.productions), " | ")
+    return "$lhs -> $rhs"
+end
+
+function str(production::Production)
+    parts = [isa(t,Rule) ? t.name : "\"$t\"" for t in production.terms ]
+    return join(parts," ")
+end
+
+function str(state::State)
+    terms = [isa(t,Rule) ? t.name : "\"$t\"" for t in state.production.terms]
+    insert!(terms, state.dot_index, "•")
+    _end = state.end_column == nothing ? -1 : state.end_column.index - 1
+    return "$(state.name)\t->\t$(join(terms," "))\t\t[$(state.start_column.index - 1)-$(_end)]"
+end
+
+str(s::String) = "\"$s\""
 
 # http://matt.might.net/articles/parsing-with-derivatives/
 end
